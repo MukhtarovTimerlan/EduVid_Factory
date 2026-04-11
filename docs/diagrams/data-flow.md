@@ -13,7 +13,7 @@ flowchart LR
         PROMPT_FULL["Full Prompt\nsystem + topic + style_hint\n+ history XML\n≤ 8 000 токенов"]
         LLM_RESP["LLM Response\n(raw text)\naction=search / finalize\n+ query или dialogue_json"]
         SEARCH_Q["Search Query\n(plain text, ≤ 100 символов)"]
-        SEARCH_SNIPPETS["Search Snippets\n(title + snippet × N)\n⚠ untrusted — изолировать в <observation>"]
+        SEARCH_SNIPPETS["Search Snippets\n(title + snippet × N)\n⚠ untrusted — изолировать в [observation]"]
         DIALOGUE_JSON["Dialogue JSON\n{lines: [{speaker, text}]}\nvalidated by Pydantic"]
     end
 
@@ -44,7 +44,7 @@ flowchart LR
     PROMPT_FULL -->|"HTTPS POST\nrouterai.ru"| LLM_RESP
     LLM_RESP -->|"action=search"| SEARCH_Q
     SEARCH_Q -->|"HTTPS\nSearch API"| SEARCH_SNIPPETS
-    SEARCH_SNIPPETS -->|"isolated in <observation>"| PROMPT_FULL
+    SEARCH_SNIPPETS -->|"isolated in [observation]"| PROMPT_FULL
 
     LLM_RESP -->|"action=finalize"| DIALOGUE_JSON
     DIALOGUE_JSON --> REPLICS

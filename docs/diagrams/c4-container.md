@@ -3,57 +3,53 @@
 Показывает внутренние контейнеры (исполняемые процессы / модули) и их взаимодействие.
 
 ```mermaid
-C4Container
-  title EduVid Factory — Containers
+graph TB
+    user(["Контент-мейкер"])
 
-  Person(user, "Контент-мейкер")
+    subgraph evf["EduVid Factory"]
+        cli["__main__.py — CLI Entry Point\nПарсинг аргументов\nЗапуск PipelineOrchestrator"]
+        orch["PipelineOrchestrator\nКоординирует цепочку\nагент → script → audio → video\nУправляет run_id, cleanup temp/"]
+        agent["AgentCore + Memory\nReAct-цикл до 3 шагов\nPrompt Builder, Response Parser\nКонтроль токен-бюджета"]
+        tools["SearchTool\nОбёртка над Search API\nНормализация, retry, таймаут 10 с"]
+        validators["Validators + CostTracker\nВалидация JSON-схемы диалога\nHard stop при превышении 2 USD"]
+        script["ScriptGenerator\nФинализация диалога\nПодготовка реплик для TTS"]
+        audio["AudioGenerator\nTTS через ElevenLabs SDK\nКонкатенация MP3, retry 3x"]
+        assets["AssetSelector\nСлучайный выбор фона\nи фото персонажей из assets/"]
+        video["VideoComposer\nMoviePy: фон + фото + аудио\nЗапись MP4 в output/"]
+        logger["Logger\nRotating log pipeline.log\nНет API ключей в логах"]
+    end
 
-  System_Boundary(evf, "EduVid Factory") {
+    router["routerai.ru"]
+    search_api["Search API"]
+    tts_api["ElevenLabs"]
+    fs["Local FS\nassets/ output/ temp/"]
 
-    Container(cli, "__main__.py\nCLI Entry Point", "Python", "Парсинг аргументов (topic, style_hint).\nЗапуск PipelineOrchestrator.\nВывод итога / ошибки пользователю.")
+    user -->|"CLI args"| cli
+    cli -->|"run(topic, style_hint)"| orch
+    orch -->|"run_react_loop(topic)"| agent
+    agent -->|"search.query(q)"| tools
+    agent -->|"validate / track_cost"| validators
+    orch -->|"prepare(dialogue)"| script
+    orch -->|"synthesize(lines)"| audio
+    orch -->|"pick()"| assets
+    orch -->|"assemble(audio, assets)"| video
+    agent -->|"HTTPS LLM"| router
+    tools -->|"HTTPS search"| search_api
+    audio -->|"HTTPS TTS"| tts_api
+    video -->|"write MP4"| fs
+    assets -->|"read"| fs
+    logger -->|"write logs"| fs
+    orch -->|"log all events"| logger
+    agent -->|"log thoughts/actions"| logger
+    cli -->|"output path / error"| user
 
-    Container(orch, "PipelineOrchestrator", "Python", "Координирует полную цепочку:\nагент → script → audio → video.\nУправляет run_id, cleanup temp/.")
+    classDef person fill:#08427b,color:#fff,stroke:#073b6f
+    classDef container fill:#1168bd,color:#fff,stroke:#0e5fab
+    classDef external fill:#6b6b6b,color:#fff,stroke:#555
 
-    Container(agent, "AgentCore + Memory", "Python", "ReAct-цикл (≤3 шага).\nPrompt Builder, Response Parser.\nСессионная история шагов.\nКонтроль токен-бюджета.")
-
-    Container(tools, "SearchTool", "Python / requests", "Обёртка над Search API.\nНормализует ответ в сниппеты.\nRetry-логика, таймаут 10 с.")
-
-    Container(validators, "Validators + CostTracker", "Python", "Валидация JSON-схемы диалога.\nПодсчёт токенов и стоимости.\nGuardrail: hard stop при > $2.")
-
-    Container(script, "ScriptGenerator", "Python", "Финализация диалога из агента.\nПодготовка реплик для TTS.")
-
-    Container(audio, "AudioGenerator", "Python / ElevenLabs SDK", "TTS построчно через ElevenLabs.\nКонкатенация MP3.\nRetry 3× на реплику.")
-
-    Container(assets, "AssetSelector", "Python", "Случайный выбор фона и\nфото персонажей из assets/.")
-
-    Container(video, "VideoComposer", "Python / MoviePy", "Сборка MP4:\nфон + фото персонажей + аудио.\nЗапись в output/.")
-
-    Container(logger, "Logger + Logs", "Python / файловая система", "Ротируемый лог pipeline.log.\nВсе шаги агента, ошибки, стоимость.\nNO API keys в логах.")
-  }
-
-  System_Ext(router, "routerai.ru")
-  System_Ext(search_api, "Search API")
-  System_Ext(tts_api, "ElevenLabs")
-  System_Ext(fs, "Local FS (assets/, output/, temp/)")
-
-  Rel(user, cli, "CLI args")
-  Rel(cli, orch, "run(topic, style_hint)")
-  Rel(orch, agent, "run_react_loop(topic)")
-  Rel(agent, tools, "search.query(q)")
-  Rel(agent, validators, "validate_json(dialogue)\ntrack_cost(tokens)")
-  Rel(orch, script, "prepare(dialogue)")
-  Rel(orch, audio, "synthesize(lines)")
-  Rel(orch, assets, "pick()")
-  Rel(orch, video, "assemble(audio, assets)")
-  Rel(agent, router, "HTTPS LLM calls")
-  Rel(tools, search_api, "HTTPS search")
-  Rel(audio, tts_api, "HTTPS TTS")
-  Rel(video, fs, "write MP4")
-  Rel(assets, fs, "read backgrounds, photos")
-  Rel(logger, fs, "write logs/pipeline.log")
-  Rel(orch, logger, "log all events")
-  Rel(agent, logger, "log thoughts/actions/observations")
-  Rel(cli, user, "output path / error message")
+    class user person
+    class cli,orch,agent,tools,validators,script,audio,assets,video,logger container
+    class router,search_api,tts_api,fs external
 ```
 
 ## Ключевые потоки данных между контейнерами

@@ -3,27 +3,32 @@
 Показывает систему целиком, её пользователей и внешние зависимости.
 
 ```mermaid
-C4Context
-  title EduVid Factory — System Context
+graph TB
+    user(["Контент-мейкер\nЗадаёт тему через CLI\nПолучает готовый MP4"])
 
-  Person(user, "Контент-мейкер", "Задаёт тему через CLI;\nполучает готовый MP4")
+    subgraph evf["EduVid Factory"]
+        core["Агентная система создания\nобразовательных видео\nReAct-цикл: поиск → рассуждение\n→ генерация диалога → TTS → видео"]
+    end
 
-  System(evf, "EduVid Factory", "Агентная система создания\nобразовательных видео.\nReAct-цикл: поиск → рассуждение\n→ генерация диалога → TTS → видео")
+    router["routerai.ru\nLLM API Gateway\nOpenAI-compatible\nМаршрутизирует к языковым моделям"]
+    search["Search API\nSerpAPI / Google CSE\nВеб-поиск, текстовые сниппеты"]
+    tts["ElevenLabs\nText-to-Speech API\nСинтез реплик диалога в MP3"]
+    fs["Local File System\nХранение assets, temp, output"]
 
-  System_Ext(router, "routerai.ru", "LLM API Gateway.\nOpenAI-compatible.\nМаршрутизирует вызовы\nк языковым моделям")
+    user -->|"CLI: topic, style_hint"| core
+    core -->|"HTTPS / OpenAI API"| router
+    core -->|"HTTPS / REST"| search
+    core -->|"HTTPS / SDK"| tts
+    core -->|"Read assets / Write output"| fs
+    core -->|"output/video_id.mp4"| user
 
-  System_Ext(search, "Search API\n(SerpAPI / Google CSE)", "Веб-поиск.\nВозвращает текстовые сниппеты\nпо запросу агента")
+    classDef person fill:#08427b,color:#fff,stroke:#073b6f
+    classDef system fill:#1168bd,color:#fff,stroke:#0e5fab
+    classDef external fill:#6b6b6b,color:#fff,stroke:#555
 
-  System_Ext(tts, "ElevenLabs", "Text-to-Speech API.\nСинтез реплик диалога\nв MP3-аудио")
-
-  System_Ext(fs, "Local File System", "Хранение assets (фоны, фото),\nвременных файлов и\nфинального MP4")
-
-  Rel(user, evf, "CLI: topic, style_hint")
-  Rel(evf, router, "HTTPS / OpenAI API\n(рассуждения + диалог)")
-  Rel(evf, search, "HTTPS / REST\n(поисковые запросы)")
-  Rel(evf, tts, "HTTPS / SDK\n(TTS построчно)")
-  Rel(evf, fs, "Read assets\nWrite output & logs")
-  Rel(evf, user, "output/video_<id>.mp4")
+    class user person
+    class core system
+    class router,search,tts,fs external
 ```
 
 ## Границы системы
