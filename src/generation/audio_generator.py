@@ -88,6 +88,7 @@ class AudioGenerator:
         Returns True on success, False if torch/silero is not available.
         """
         try:
+            import sys  # noqa: PLC0415
             import torch  # noqa: PLC0415
         except ImportError:
             return False
@@ -95,13 +96,24 @@ class AudioGenerator:
         try:
             if self._silero_model is None:
                 self._log("info", "Loading Silero TTS model (first run — downloading ~50 MB)...")
-                self._silero_model, _ = torch.hub.load(
-                    repo_or_dir="snakers4/silero-models",
-                    model="silero_tts",
-                    language="ru",
-                    speaker="v4_ru",
-                    verbose=False,
-                )
+                # silero-models repo has its own src/ package (src/silero/).
+                # Python's import cache (sys.modules) already holds OUR src/
+                # package, so hubconf.py's `from src.silero import ...` finds
+                # our src and fails. Temporarily evict our src from sys.modules
+                # so torch.hub can import silero's src/ cleanly.
+                evicted = {k: sys.modules.pop(k) for k in list(sys.modules)
+                           if k == "src" or k.startswith("src.")}
+                try:
+                    self._silero_model, _ = torch.hub.load(
+                        repo_or_dir="snakers4/silero-models",
+                        model="silero_tts",
+                        language="ru",
+                        speaker="v4_ru",
+                        verbose=False,
+                    )
+                finally:
+                    # Restore our src package in the module cache.
+                    sys.modules.update(evicted)
                 self._log("info", "Silero TTS model loaded")
 
             self._silero_model.save_wav(
