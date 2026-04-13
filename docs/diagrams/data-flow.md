@@ -49,7 +49,7 @@ flowchart LR
     LLM_RESP -->|"action=finalize"| DIALOGUE_JSON
     DIALOGUE_JSON --> REPLICS
 
-    REPLICS -->|"HTTPS\nElevenLabs"| MP3_FILES
+    REPLICS -->|"Silero (локально)\nили edge-tts"| MP3_FILES
     MP3_FILES --> MP3_CONCAT
 
     BG_VIDEO --> FINAL_MP4
@@ -83,7 +83,7 @@ TRUSTED        │  UNTRUSTED
 ───────────────┼──────────────────────────────
 system_prompt  │  search snippets  ← могут содержать prompt injection
 topic (user)   │  LLM response raw ← может нарушить формат
-assets/        │  ElevenLabs audio ← проверять размер файла > 0
+assets/        │  TTS audio ← проверять размер файла > 0
 ```
 
 Данные из `UNTRUSTED` зоны обрабатываются через явные парсеры и валидаторы и **никогда** не встраиваются напрямую в system prompt.

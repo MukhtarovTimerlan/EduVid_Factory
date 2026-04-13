@@ -3,7 +3,7 @@
 ## Модуль: `tools/search.py`
 
 ### Ответственность
-Единственный инструмент агента. Принимает поисковый запрос от AgentCore, вызывает внешний Search API, нормализует ответ в список текстовых сниппетов.
+Единственный инструмент агента. Принимает поисковый запрос от AgentCore, выполняет поиск через DuckDuckGo (бесплатно, без API-ключа), нормализует ответ в список текстовых сниппетов.
 
 ### Интерфейс
 
@@ -17,20 +17,24 @@ class SearchTool:
         """
 ```
 
-### Источники (в порядке приоритета)
+### Провайдер
 
-| Провайдер | Endpoint | Параметры |
+| Провайдер | Библиотека | API-ключ |
 |---|---|---|
-| SerpAPI | `https://serpapi.com/search` | `engine=google`, `num=n`, `api_key` |
-| Google Custom Search | `https://www.googleapis.com/customsearch/v1` | `cx=SEARCH_ENGINE_ID`, `num=n`, `key` |
+| DuckDuckGo | `ddgs` (Python package) | Не нужен |
 
-Выбор провайдера через `SEARCH_PROVIDER` env var (`serpapi` / `google_cse`).
+```python
+from ddgs import DDGS
+
+with DDGS() as ddgs:
+    results = list(ddgs.text(query, max_results=n))
+```
 
 ### Нормализация ответа
 
-Из ответа API извлекаются только:
+Из ответа DuckDuckGo извлекаются только:
 ```python
-f"Title: {item['title']} | Snippet: {item['snippet']}"
+f"Title: {item['title']} | Snippet: {item['body']}"
 ```
 URL, ссылки, HTML — **отбрасываются**. Это снижает объём контекста и убирает потенциальные injection-векторы через URL-подобные конструкции.
 
@@ -57,8 +61,8 @@ RETRY_BACKOFF = (1, 2, 4)  # секунды
 
 | Ситуация | Поведение |
 |---|---|
-| HTTP 4xx (неверный ключ) | Raise `SearchConfigError` (не retry — ошибка конфигурации) |
-| HTTP 429 | Retry после `Retry-After` или 30 с |
+| Ошибка сети / таймаут | Retry 3×, затем return `["search unavailable"]` |
+| Rate limit DuckDuckGo | Retry с задержкой (1→2→4 с) |
 | HTTP 5xx / Timeout | Retry 3×, затем return `["search unavailable"]` |
 | Пустой список результатов | Return `["no results found for this query"]` |
 | Результаты нерелевантны | Агент решает сам на следующем шаге рассуждения |

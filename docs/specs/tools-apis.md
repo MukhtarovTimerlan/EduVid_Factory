@@ -61,7 +61,7 @@ Retry применяется при: Timeout, HTTP 5xx, `openai.APIConnectionErr
 
 ---
 
-## 2. ElevenLabs TTS (`generation/audio_generator.py`)
+## 2. TTS (`generation/audio_generator.py`)
 
 ### Контракт
 
@@ -69,41 +69,47 @@ Retry применяется при: Timeout, HTTP 5xx, `openai.APIConnectionErr
 class AudioGenerator:
     def synthesize(self, lines: list[DialogueLine], output_dir: Path) -> Path:
         """
-        Для каждой реплики создаёт MP3.
-        Конкатенирует в один файл.
+        Для каждой реплики создаёт WAV (Silero) или MP3 (edge-tts).
+        Конкатенирует в один файл audio.mp3.
         Возвращает путь к итоговому audio.mp3.
         При ошибке отдельной реплики — пропускает с WARN.
         """
 ```
 
-### Параметры ElevenLabs
+### Стратегия (primary → fallback)
 
+**Primary: Silero TTS** — локальная модель через `torch.hub`, не требует API-ключа.
 ```python
-VOICE_A = os.environ.get("ELEVENLABS_VOICE_A", "default_voice_id")
-VOICE_B = os.environ.get("ELEVENLABS_VOICE_B", "default_voice_b_id")
-STABILITY = 0.5
-SIMILARITY_BOOST = 0.75
-TIMEOUT = 20  # секунд на реплику
+# Загружается один раз при первом вызове (~50 МБ)
+model, _ = torch.hub.load("snakers4/silero-models", "silero_tts",
+                           language="ru", speaker="v4_ru")
+
+VOICE_A = os.environ.get("TTS_VOICE_A", "xenia")   # clear, energetic female
+VOICE_B = os.environ.get("TTS_VOICE_B", "baya")    # warmer, softer female
+# Другие варианты: kseniya, aidar (мужской), eugene (мужской)
 ```
 
-### Маппинг speaker → voice
-
+**Fallback: edge-tts** — используется если `torch` не установлен.
 ```python
-VOICE_MAP = {"A": VOICE_A, "B": VOICE_B}
+EDGE_VOICE = os.environ.get("EDGE_TTS_VOICE", "ru-RU-SvetlanaNeural")
+# Дифференциация голосов через просодию:
+PROSODY = {"A": {"rate": "+0%",  "pitch": "+0Hz"},
+           "B": {"rate": "-15%", "pitch": "+12Hz"}}
 ```
 
 ### Failure Modes
 
 | Ситуация | Действие |
 |---|---|
-| HTTP 5xx / Timeout | Retry 3×, затем пропустить реплику (WARN) |
-| Пустой MP3 (0 байт) | Повтор 1 раз, при повторной неудаче — пропустить |
+| torch не установлен | Автоматический fallback на edge-tts |
+| Silero: ошибка модели | Fallback на edge-tts, все последующие реплики тоже через edge-tts |
+| edge-tts: пустой файл | `AudioError` |
 | Все реплики пропущены | `AudioError` — невозможно создать видео без звука |
-| HTTP 401 | `AudioConfigError` — ошибка ключа, без retry |
+| Любая ошибка реплики | Retry 3×, затем пропустить с WARN |
 
 ### Side Effects
 
-- Временные файлы: `temp/<run_id>/line_N.mp3`
+- Временные файлы: `temp/<run_id>/line_NNN.wav` (Silero) или `line_NNN.mp3` (edge-tts)
 - Финальный файл: `temp/<run_id>/audio.mp3`
 - Все temp-файлы удаляются `PipelineOrchestrator` после сборки видео
 
@@ -128,28 +134,31 @@ VOICE_MAP = {"A": VOICE_A, "B": VOICE_B}
 ### Конфигурация через env vars
 
 ```bash
-ROUTERAI_BASE_URL=https://api.routerai.ru/v1
+# Обязательные
+ROUTERAI_BASE_URL=https://routerai.ru/api/v1
 ROUTERAI_API_KEY=...
-LLM_MODEL=gpt-4o-mini
+LLM_MODEL=openai/gpt-5.4-mini
 
-SEARCH_PROVIDER=serpapi           # или google_cse
-SEARCH_API_KEY=...
-SEARCH_ENGINE_ID=...              # только для google_cse
+# TTS — Silero (без ключа, нужен torch)
+TTS_VOICE_A=xenia
+TTS_VOICE_B=baya
+# TTS — edge-tts fallback (без ключа)
+EDGE_TTS_VOICE=ru-RU-SvetlanaNeural
 
-ELEVENLABS_API_KEY=...
-ELEVENLABS_VOICE_A=...
-ELEVENLABS_VOICE_B=...
+# Search — DuckDuckGo (без ключа)
+SEARCH_N_RESULTS=5
 ```
 
 ### Startup validation
 
-При запуске `PipelineOrchestrator` проверяет наличие всех обязательных env vars.  
+При запуске `PipelineOrchestrator` проверяет наличие обязательных env vars.  
 Если отсутствует хотя бы одна — `ConfigurationError` до первого API-вызова.
 
 ### Таймауты (итог)
 
-| API | Connect timeout | Read timeout |
+| Компонент | Connect timeout | Read timeout |
 |---|---|---|
 | routerai.ru | 5 с | 30 с |
-| Search API | 5 с | 10 с |
-| ElevenLabs | 5 с | 20 с |
+| DuckDuckGo search | 5 с | 10 с |
+| Silero TTS | — (локально) | — |
+| edge-tts | — (HTTPS к MS Edge) | 30 с |

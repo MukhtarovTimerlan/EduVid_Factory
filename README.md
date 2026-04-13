@@ -34,3 +34,64 @@ PoC реализует базовый **ReAct-агент**:
 - Не имеет веб-интерфейса — только командная строка.
 - Не поддерживает потоковую генерацию или очередь заданий.
 - Не обрабатывает авторские права на голоса знаменитостей (используются обобщённые синтезированные голоса).
+
+---
+
+## Быстрый старт
+
+### Требования
+
+- Python 3.11+
+- [PyTorch](https://pytorch.org/) — опционально, но рекомендуется (для Silero TTS с двумя разными женскими голосами); без него используется edge-tts
+
+### Установка
+
+```bash
+git clone <repo-url>
+cd EduVid_Factory
+
+pip install -e ".[dev]"
+
+# Скопировать конфигурацию
+cp .env.example .env
+# Открыть .env и заполнить ROUTERAI_BASE_URL и ROUTERAI_API_KEY
+```
+
+### Добавить ассеты
+
+```
+assets/backgrounds/   — ≥1 файл (.mp4, .mov, .jpg, .png) — фон видео
+assets/characters/    — ≥2 файла (.jpg, .png) — фото персонажей A и B
+```
+
+### Запуск
+
+```bash
+# Только сценарий (без TTS и видео) — для проверки агента:
+python -m src "Градиентный бустинг" --dry-run
+
+# Полный пайплайн (агент → TTS → видео):
+python -m src "Градиентный бустинг"
+python -m src "Нейронные сети" --style "для начинающих"
+python -m src "Квантовые вычисления" --log-level DEBUG
+
+# Результат: output/video_<run_id>.mp4
+```
+
+### Тесты
+
+```bash
+pytest tests/unit/ -v
+pytest tests/integration/ -v
+```
+
+### Конфигурация
+
+| Переменная | Описание | Обязательная |
+|---|---|---|
+| `ROUTERAI_BASE_URL` | URL API routerai.ru | ✅ |
+| `ROUTERAI_API_KEY` | Ключ routerai.ru | ✅ |
+| `LLM_MODEL` | Модель (по умолч. `openai/gpt-5.4-mini`) | — |
+| `TTS_VOICE_A` | Голос персонажа A (по умолч. `xenia`) | — |
+| `TTS_VOICE_B` | Голос персонажа B (по умолч. `baya`) | — |
+| `AGENT_MAX_STEPS` | Макс. итераций поиска (по умолч. `3`) | — |

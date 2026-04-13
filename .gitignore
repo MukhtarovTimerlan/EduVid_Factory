@@ -1,0 +1,36 @@
+# Secrets
+.env
+CLAUDE.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# Generated output — логи и temp не коммитим, видео коммитим
+temp/*
+!temp/.gitkeep
+logs/*
+!logs/.gitkeep
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDEs
+.idea/
+.vscode/
+*.swp

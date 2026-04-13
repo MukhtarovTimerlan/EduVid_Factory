@@ -11,14 +11,14 @@ graph TB
     end
 
     router["routerai.ru\nLLM API Gateway\nOpenAI-compatible\nМаршрутизирует к языковым моделям"]
-    search["Search API\nSerpAPI / Google CSE\nВеб-поиск, текстовые сниппеты"]
-    tts["ElevenLabs\nText-to-Speech API\nСинтез реплик диалога в MP3"]
+    search["DuckDuckGo\nddgs (без API-ключа)\nВеб-поиск, текстовые сниппеты"]
+    tts["Silero TTS / edge-tts\nЛокальный TTS (torch.hub)\nFallback: Microsoft Edge TTS"]
     fs["Local File System\nХранение assets, temp, output"]
 
     user -->|"CLI: topic, style_hint"| core
     core -->|"HTTPS / OpenAI API"| router
-    core -->|"HTTPS / REST"| search
-    core -->|"HTTPS / SDK"| tts
+    core -->|"ddgs (HTTPS)"| search
+    core -->|"локально / HTTPS fallback"| tts
     core -->|"Read assets / Write output"| fs
     core -->|"output/video_id.mp4"| user
 
@@ -36,6 +36,6 @@ graph TB
 | Внутри границы | Вне границы |
 |---|---|
 | ReAct-агент, pipeline синтеза, логика сборки видео | Языковые модели (routerai.ru) |
-| Валидация диалога, управление состоянием | Поисковый индекс (Search API) |
-| Логирование и cost-трекинг | Синтез речи (ElevenLabs) |
+| Валидация диалога, управление состоянием | Поисковый индекс (DuckDuckGo) |
+| Логирование и cost-трекинг | Синтез речи (Silero / edge-tts) |
 | | Публикация в соцсети (вне scope PoC) |

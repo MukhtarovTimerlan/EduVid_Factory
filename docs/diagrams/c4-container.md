@@ -10,18 +10,18 @@ graph TB
         cli["__main__.py — CLI Entry Point\nПарсинг аргументов\nЗапуск PipelineOrchestrator"]
         orch["PipelineOrchestrator\nКоординирует цепочку\nагент → script → audio → video\nУправляет run_id, cleanup temp/"]
         agent["AgentCore + Memory\nReAct-цикл до 3 шагов\nPrompt Builder, Response Parser\nКонтроль токен-бюджета"]
-        tools["SearchTool\nОбёртка над Search API\nНормализация, retry, таймаут 10 с"]
+        tools["SearchTool\nDuckDuckGo (ddgs)\nНормализация, retry, без API-ключа"]
         validators["Validators + CostTracker\nВалидация JSON-схемы диалога\nHard stop при превышении 2 USD"]
         script["ScriptGenerator\nФинализация диалога\nПодготовка реплик для TTS"]
-        audio["AudioGenerator\nTTS через ElevenLabs SDK\nКонкатенация MP3, retry 3x"]
+        audio["AudioGenerator\nSilero TTS (локально) + edge-tts fallback\nКонкатенация WAV/MP3, retry 3x"]
         assets["AssetSelector\nСлучайный выбор фона\nи фото персонажей из assets/"]
         video["VideoComposer\nMoviePy: фон + фото + аудио\nЗапись MP4 в output/"]
         logger["Logger\nRotating log pipeline.log\nНет API ключей в логах"]
     end
 
     router["routerai.ru"]
-    search_api["Search API"]
-    tts_api["ElevenLabs"]
+    search_api["DuckDuckGo"]
+    tts_api["Silero / edge-tts"]
     fs["Local FS\nassets/ output/ temp/"]
 
     user -->|"CLI args"| cli

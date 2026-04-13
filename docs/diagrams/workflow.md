@@ -78,8 +78,8 @@ flowchart TD
 
     SCRIPT --> TTS_LOOP
 
-    subgraph TTS["TTS Pipeline (ElevenLabs)"]
-        TTS_LOOP[Для каждой реплики] --> TTS_CALL[ElevenLabs.synthesize\ntimeout=20с]
+    subgraph TTS["TTS Pipeline (Silero / edge-tts)"]
+        TTS_LOOP[Для каждой реплики] --> TTS_CALL[AudioGenerator.synthesize\nSilero (локально) или edge-tts]
         TTS_CALL --> TTS_OK{Успех?}
         TTS_OK -- Нет --> TTS_RETRY{retry ≤ 3?}
         TTS_RETRY -- Да --> TTS_CALL
@@ -106,4 +106,4 @@ flowchart TD
 | **ABORT: LLM** | LLM недоступен после 3 retry | Нет видео, exit code 1 |
 | **Force Finalize** | Исчерпаны итерации или бюджет | Диалог из имеющегося контекста |
 | **Fallback Dialogue** | JSON невалиден после 2 retry | Шаблонный диалог |
-| **TTS Skip** | ElevenLabs не отвечает | Реплика пропускается, видео создаётся |
+| **TTS Skip** | Все retry исчерпаны | Реплика пропускается, видео создаётся |

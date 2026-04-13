@@ -36,17 +36,15 @@ Example:
 ### Обязательные переменные окружения
 
 ```bash
-ROUTERAI_BASE_URL=https://api.routerai.ru/v1
+ROUTERAI_BASE_URL=https://routerai.ru/api/v1
 ROUTERAI_API_KEY=<api_key>
-SEARCH_API_KEY=<serpapi_or_google_key>
-ELEVENLABS_API_KEY=<key>
 ```
 
 ### Опциональные переменные
 
 ```bash
 # LLM
-LLM_MODEL=gpt-4o-mini              # модель по умолчанию
+LLM_MODEL=openai/gpt-5.4-mini      # модель по умолчанию
 LLM_TEMPERATURE=0.3
 LLM_MAX_TOKENS=1024
 LLM_TIMEOUT=30
@@ -56,18 +54,14 @@ AGENT_MAX_STEPS=3
 AGENT_TOKEN_BUDGET=8000
 AGENT_COST_LIMIT_USD=2.0
 
-# Search
-SEARCH_PROVIDER=serpapi             # serpapi | google_cse
-SEARCH_ENGINE_ID=                   # только для google_cse
+# Search (DuckDuckGo — без ключа)
 SEARCH_N_RESULTS=5
-SEARCH_TIMEOUT=10
 
-# ElevenLabs
-ELEVENLABS_VOICE_A=<voice_id>
-ELEVENLABS_VOICE_B=<voice_id>
-ELEVENLABS_STABILITY=0.5
-ELEVENLABS_SIMILARITY=0.75
-ELEVENLABS_TIMEOUT=20
+# TTS — Silero (без ключа, нужен PyTorch)
+TTS_VOICE_A=xenia                        # xenia / baya / kseniya / aidar / eugene
+TTS_VOICE_B=baya
+# TTS — edge-tts fallback (без ключа)
+EDGE_TTS_VOICE=ru-RU-SvetlanaNeural
 
 # Paths
 ASSETS_DIR=assets
@@ -98,9 +92,8 @@ cp .env.example .env
 
 ```python
 REQUIRED_ENV_VARS = [
-    "ROUTERAI_BASE_URL", "ROUTERAI_API_KEY",
-    "SEARCH_API_KEY",
-    "ELEVENLABS_API_KEY",
+    "ROUTERAI_BASE_URL",
+    "ROUTERAI_API_KEY",
 ]
 
 REQUIRED_DIRS = ["assets/backgrounds", "assets/characters"]
@@ -120,12 +113,14 @@ def validate_on_startup():
 [tool.poetry.dependencies]
 python = "^3.11"
 openai = "^1.0"          # routerai.ru совместим с openai SDK
-requests = "^2.31"       # Search API calls
-elevenlabs = "^1.0"      # TTS SDK
-moviepy = "^1.0"         # Video composition
+requests = "^2.31"       # HTTP requests
+edge-tts = "^6.0"        # TTS fallback (Microsoft Edge, без ключа)
+ddgs = "^9.0"            # DuckDuckGo search (без ключа)
+moviepy = "^2.0"         # Video composition (2.x API)
 pydantic = "^2.0"        # Dialogue JSON validation
 python-dotenv = "^1.0"   # .env loading
 tiktoken = "^0.5"        # Token counting (для OpenAI-совместимых моделей)
+# torch — опционально; если установлен, используется Silero TTS (два голоса)
 ```
 
 ---
